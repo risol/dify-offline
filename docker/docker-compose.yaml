@@ -226,7 +226,10 @@ services:
   # API service
   api:
     <<: *shared-api-worker-config
-    image: langgenius/dify-api:1.17.1
+    image: ${DIFY_API_IMAGE:-dify-api-offline:1.17.1}
+    build:
+      context: ..
+      dockerfile: api/Dockerfile
     environment:
       MODE: api
       SENTRY_DSN: ${API_SENTRY_DSN:-}
@@ -274,7 +277,7 @@ services:
   # WebSocket service for workflow collaboration.
   api_websocket:
     <<: *shared-api-worker-config
-    image: langgenius/dify-api:1.17.1
+    image: ${DIFY_API_IMAGE:-dify-api-offline:1.17.1}
     profiles:
       - collaboration
     environment:
@@ -305,7 +308,7 @@ services:
   # The Celery worker for processing all queues (dataset, workflow, mail, etc.)
   worker:
     <<: *shared-worker-config
-    image: langgenius/dify-api:1.17.1
+    image: ${DIFY_API_IMAGE:-dify-api-offline:1.17.1}
     environment:
       MODE: worker
       SENTRY_DSN: ${API_SENTRY_DSN:-}
@@ -352,7 +355,7 @@ services:
   # Celery beat for scheduling periodic tasks.
   worker_beat:
     <<: *shared-worker-beat-config
-    image: langgenius/dify-api:1.17.1
+    image: ${DIFY_API_IMAGE:-dify-api-offline:1.17.1}
     environment:
       MODE: beat
     depends_on:
@@ -385,7 +388,10 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:1.17.1
+    image: ${DIFY_WEB_IMAGE:-dify-web-offline:1.17.1}
+    build:
+      context: ..
+      dockerfile: web/Dockerfile
     restart: always
     env_file:
       - path: ./envs/core-services/web.env
@@ -402,7 +408,7 @@ services:
       NEXT_PUBLIC_COOKIE_DOMAIN: ${NEXT_PUBLIC_COOKIE_DOMAIN:-}
       NEXT_PUBLIC_SOCKET_URL: ${NEXT_PUBLIC_SOCKET_URL:-ws://localhost}
       SENTRY_DSN: ${WEB_SENTRY_DSN:-}
-      NEXT_TELEMETRY_DISABLED: ${NEXT_TELEMETRY_DISABLED:-0}
+      NEXT_TELEMETRY_DISABLED: ${NEXT_TELEMETRY_DISABLED:-1}
       EXPERIMENTAL_ENABLE_VINEXT: ${EXPERIMENTAL_ENABLE_VINEXT:-false}
       TEXT_GENERATION_TIMEOUT_MS: ${TEXT_GENERATION_TIMEOUT_MS:-60000}
       CSP_WHITELIST: ${CSP_WHITELIST:-}
@@ -417,9 +423,9 @@ services:
       MAX_PARALLEL_LIMIT: ${MAX_PARALLEL_LIMIT:-10}
       MAX_ITERATIONS_NUM: ${MAX_ITERATIONS_NUM:-99}
       MAX_TREE_DEPTH: ${MAX_TREE_DEPTH:-50}
-      ENABLE_WEBSITE_JINAREADER: ${ENABLE_WEBSITE_JINAREADER:-true}
-      ENABLE_WEBSITE_FIRECRAWL: ${ENABLE_WEBSITE_FIRECRAWL:-true}
-      ENABLE_WEBSITE_WATERCRAWL: ${ENABLE_WEBSITE_WATERCRAWL:-true}
+      ENABLE_WEBSITE_JINAREADER: ${ENABLE_WEBSITE_JINAREADER:-false}
+      ENABLE_WEBSITE_FIRECRAWL: ${ENABLE_WEBSITE_FIRECRAWL:-false}
+      ENABLE_WEBSITE_WATERCRAWL: ${ENABLE_WEBSITE_WATERCRAWL:-false}
 
   # The PostgreSQL database.
   db_postgres:
@@ -523,7 +529,7 @@ services:
       API_KEY: ${SANDBOX_API_KEY:-dify-sandbox}
       GIN_MODE: ${SANDBOX_GIN_MODE:-release}
       WORKER_TIMEOUT: ${SANDBOX_WORKER_TIMEOUT:-15}
-      ENABLE_NETWORK: ${SANDBOX_ENABLE_NETWORK:-true}
+      ENABLE_NETWORK: ${SANDBOX_ENABLE_NETWORK:-false}
       HTTP_PROXY: ${SANDBOX_HTTP_PROXY:-http://ssrf_proxy:3128}
       HTTPS_PROXY: ${SANDBOX_HTTPS_PROXY:-http://ssrf_proxy:3128}
       SANDBOX_PORT: ${SANDBOX_PORT:-8194}
@@ -571,7 +577,10 @@ services:
 
   # plugin daemon
   plugin_daemon:
-    image: langgenius/dify-plugin-daemon:0.6.10-local
+    image: ${DIFY_PLUGIN_DAEMON_IMAGE:-dify-plugin-daemon-offline:0.6.10}
+    build:
+      context: ..
+      dockerfile: offline/plugin-daemon/Dockerfile
     restart: always
     env_file:
       - path: ./envs/core-services/shared.env
@@ -602,12 +611,15 @@ services:
       PLUGIN_REMOTE_INSTALLING_HOST: ${PLUGIN_DEBUGGING_HOST:-0.0.0.0}
       PLUGIN_REMOTE_INSTALLING_PORT: ${PLUGIN_DEBUGGING_PORT:-5003}
       PLUGIN_WORKING_PATH: ${PLUGIN_WORKING_PATH:-/app/storage/cwd}
-      FORCE_VERIFYING_SIGNATURE: ${FORCE_VERIFYING_SIGNATURE:-true}
+      FORCE_VERIFYING_SIGNATURE: ${FORCE_VERIFYING_SIGNATURE:-false}
       PYTHON_ENV_INIT_TIMEOUT: ${PLUGIN_PYTHON_ENV_INIT_TIMEOUT:-120}
       PLUGIN_MAX_EXECUTION_TIMEOUT: ${PLUGIN_MAX_EXECUTION_TIMEOUT:-600}
       PLUGIN_STDIO_BUFFER_SIZE: ${PLUGIN_STDIO_BUFFER_SIZE:-1024}
       PLUGIN_STDIO_MAX_BUFFER_SIZE: ${PLUGIN_STDIO_MAX_BUFFER_SIZE:-5242880}
       PIP_MIRROR_URL: ${PIP_MIRROR_URL:-}
+      PIP_MIRROR_AUTO_DETECT: ${PIP_MIRROR_AUTO_DETECT:-false}
+      PIP_EXTRA_ARGS: ${PIP_EXTRA_ARGS:---offline}
+      PLUGIN_REMOTE_INSTALLING_ENABLED: ${PLUGIN_REMOTE_INSTALLING_ENABLED:-false}
       PLUGIN_STORAGE_TYPE: ${PLUGIN_STORAGE_TYPE:-local}
       PLUGIN_STORAGE_LOCAL_ROOT: ${PLUGIN_STORAGE_LOCAL_ROOT:-/app/storage}
       PLUGIN_INSTALLED_PATH: ${PLUGIN_INSTALLED_PATH:-plugin}
@@ -835,7 +847,7 @@ services:
       AUTHENTICATION_APIKEY_USERS: ${WEAVIATE_AUTHENTICATION_APIKEY_USERS:-hello@dify.ai}
       AUTHORIZATION_ADMINLIST_ENABLED: ${WEAVIATE_AUTHORIZATION_ADMINLIST_ENABLED:-true}
       AUTHORIZATION_ADMINLIST_USERS: ${WEAVIATE_AUTHORIZATION_ADMINLIST_USERS:-hello@dify.ai}
-      DISABLE_TELEMETRY: ${WEAVIATE_DISABLE_TELEMETRY:-false}
+      DISABLE_TELEMETRY: ${WEAVIATE_DISABLE_TELEMETRY:-true}
       ENABLE_TOKENIZER_GSE: ${WEAVIATE_ENABLE_TOKENIZER_GSE:-false}
       ENABLE_TOKENIZER_KAGOME_JA: ${WEAVIATE_ENABLE_TOKENIZER_KAGOME_JA:-false}
       ENABLE_TOKENIZER_KAGOME_KR: ${WEAVIATE_ENABLE_TOKENIZER_KAGOME_KR:-false}
