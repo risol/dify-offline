@@ -1,6 +1,7 @@
-"""Install configured marketplace plugins for a newly created tenant."""
+"""Install configured default plugins for a newly created tenant."""
 
 import logging
+from pathlib import Path
 
 from celery import shared_task
 
@@ -71,25 +72,66 @@ def configure_default_models_task(self, tenant_id: str, plugin_install_task_id: 
         )
 
 
+def _local_package_name(plugin_id: str) -> str:
+    return plugin_id.replace("/", "__") + ".difypkg"
+
+
+def _install_from_offline_packages(tenant_id: str, plugin_ids: list[str]):
+    package_dir = Path(dify_config.OFFLINE_PLUGIN_PACKAGE_DIR)
+    if not package_dir.is_dir():
+        raise RuntimeError(f"Offline plugin package directory does not exist: {package_dir}")
+
+    identifiers: list[str] = []
+    missing: list[str] = []
+    for plugin_id in plugin_ids:
+        package_path = package_dir / _local_package_name(plugin_id)
+        if not package_path.is_file():
+            missing.append(plugin_id)
+            continue
+
+        decoded = PluginService.upload_pkg(tenant_id, package_path.read_bytes())
+        identifiers.append(decoded.unique_identifier)
+
+    if missing:
+        raise RuntimeError(
+            "Missing offline plugin package(s): "
+            + ", ".join(missing)
+            + f". Expected them under {package_dir}."
+        )
+
+    if not identifiers:
+        return None
+
+    logger.info("Installing default plugins from offline packages for tenant %s: %s", tenant_id, ", ".join(plugin_ids))
+    return PluginService.install_from_local_pkg(tenant_id, identifiers)
+
+
 @shared_task(queue="plugin")
 def install_default_plugins_task(tenant_id: str, plugin_ids: list[str]) -> None:
-    """Install the latest marketplace versions of the configured plugins."""
+    """Install configured plugins without public-network access when OFFLINE_MODE is enabled."""
     if not plugin_ids:
         return
 
     try:
-        manifests = {manifest.plugin_id: manifest for manifest in marketplace.batch_fetch_plugin_manifests(plugin_ids)}
-        plugin_identifiers = [
-            manifests[plugin_id].latest_package_identifier for plugin_id in plugin_ids if plugin_id in manifests
-        ]
-        missing_plugin_ids = [plugin_id for plugin_id in plugin_ids if plugin_id not in manifests]
-        if missing_plugin_ids:
-            logger.warning("Default plugins not found in marketplace: %s", ", ".join(missing_plugin_ids))
-        if not plugin_identifiers:
-            return
+        if dify_config.OFFLINE_MODE:
+            response = _install_from_offline_packages(tenant_id, plugin_ids)
+        else:
+            if not dify_config.MARKETPLACE_ENABLED:
+                raise RuntimeError("Marketplace is disabled and OFFLINE_MODE is not enabled")
+            manifests = {
+                manifest.plugin_id: manifest for manifest in marketplace.batch_fetch_plugin_manifests(plugin_ids)
+            }
+            plugin_identifiers = [
+                manifests[plugin_id].latest_package_identifier for plugin_id in plugin_ids if plugin_id in manifests
+            ]
+            missing_plugin_ids = [plugin_id for plugin_id in plugin_ids if plugin_id not in manifests]
+            if missing_plugin_ids:
+                logger.warning("Default plugins not found in marketplace: %s", ", ".join(missing_plugin_ids))
+            if not plugin_identifiers:
+                return
+            response = PluginService.install_from_marketplace_pkg(tenant_id, plugin_identifiers)
 
-        response = PluginService.install_from_marketplace_pkg(tenant_id, plugin_identifiers)
-        if dify_config.NEW_USER_DEFAULT_MODELS:
+        if response is not None and dify_config.NEW_USER_DEFAULT_MODELS:
             configure_default_models_task.delay(
                 tenant_id,
                 None if response.all_installed else response.task_id,

@@ -110,6 +110,14 @@ RUN python -c "import tiktoken; tiktoken.encoding_for_model('gpt2')" \
 # Copy source code
 COPY --chown=dify:dify api /app/api/
 
+# Bundle the pinned OpenAI-API-compatible plugin into the API image.
+# The plugin source is vendored so this step does not access the network.
+COPY --chown=dify:dify offline/plugins/openai_api_compatible /tmp/openai_api_compatible
+RUN python /app/api/offline_plugins/build_difypkg.py \
+      /tmp/openai_api_compatible \
+      /app/api/offline_plugins/langgenius__openai_api_compatible.difypkg \
+    && rm -rf /tmp/openai_api_compatible
+
 # Prepare entrypoint script
 COPY --chown=dify:dify --chmod=755 api/docker/entrypoint.sh /entrypoint.sh
 

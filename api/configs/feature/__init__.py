@@ -284,8 +284,13 @@ class PluginConfig(BaseSettings):
     )
 
     NEW_USER_DEFAULT_PLUGIN_IDS: str = Field(
-        description="Comma-separated marketplace plugin IDs whose latest versions are installed for new users",
+        description="Comma-separated plugin IDs installed for new users",
         default="",
+    )
+
+    OFFLINE_PLUGIN_PACKAGE_DIR: str = Field(
+        description="Directory containing pre-bundled .difypkg files used when OFFLINE_MODE is enabled",
+        default="/app/api/offline_plugins",
     )
 
     @field_validator("PLUGIN_REMOTE_INSTALL_PORT", mode="before")
@@ -343,8 +348,13 @@ class PluginConfig(BaseSettings):
 
 class MarketplaceConfig(BaseSettings):
     """
-    Configuration for marketplace
+    Configuration for marketplace and air-gapped deployments.
     """
+
+    OFFLINE_MODE: bool = Field(
+        description="Disable features that require public network access",
+        default=False,
+    )
 
     MARKETPLACE_ENABLED: bool = Field(
         description="Enable or disable marketplace",

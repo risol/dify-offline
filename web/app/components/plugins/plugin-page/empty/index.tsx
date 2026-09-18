@@ -99,11 +99,6 @@ const Empty = ({
     if (plugin_installation_permission.restrict_to_marketplace_only) return methods
 
     methods.push({
-      icon: Github,
-      text: t(($) => $['source.github'], { ns: 'plugin' }),
-      action: 'github',
-    })
-    methods.push({
       icon: FileZip,
       text: t(($) => $['source.local'], { ns: 'plugin' }),
       action: 'local',
@@ -176,13 +171,6 @@ const Empty = ({
             </div>
           </div>
         </div>
-        {selectedAction === 'github' && (
-          <InstallFromGitHub
-            installContextCategory={installContextCategory}
-            onSuccess={noop}
-            onClose={() => setSelectedAction(null)}
-          />
-        )}
         {selectedAction === 'local' && selectedFile && (
           <InstallFromLocalPackage
             file={selectedFile}

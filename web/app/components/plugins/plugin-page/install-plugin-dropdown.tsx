@@ -20,7 +20,6 @@ import InstallFromLocalPackage from '@/app/components/plugins/install-plugin/ins
 import { SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS } from '@/config'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import {
-  GithubInstallSourceIcon,
   LocalPackageInstallSourceIcon,
   MarketplaceInstallSourceIcon,
 } from './install-source-icons'
@@ -114,11 +113,6 @@ const InstallPluginDropdown = ({
     if (plugin_installation_permission.restrict_to_marketplace_only) return methods
 
     methods.push({
-      icon: GithubInstallSourceIcon,
-      text: t(($) => $['source.github'], { ns: 'plugin' }),
-      action: 'github',
-    })
-    methods.push({
       icon: LocalPackageInstallSourceIcon,
       text: t(($) => $['source.local'], { ns: 'plugin' }),
       action: 'local',
@@ -203,13 +197,6 @@ const InstallPluginDropdown = ({
           ))}
         </DropdownMenuContent>
       </div>
-      {selectedAction === 'github' && (
-        <InstallFromGitHub
-          installContextCategory={installContextCategory}
-          onSuccess={noop}
-          onClose={() => setSelectedAction(null)}
-        />
-      )}
       {selectedAction === 'local' && selectedFile && (
         <InstallFromLocalPackage
           file={selectedFile}

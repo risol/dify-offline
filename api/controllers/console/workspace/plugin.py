@@ -777,6 +777,9 @@ class PluginUploadFromGithubApi(Resource):
     @model_validate(ParserGithubUpload)
     def post(self, req_data: ParserGithubUpload, tenant_id: str):
 
+        if dify_config.OFFLINE_MODE:
+            return {"code": "offline_mode", "message": "GitHub plugin installation is disabled in offline mode."}, 403
+
         try:
             response = PluginService.upload_pkg_from_github(
                 tenant_id, req_data.repo, req_data.version, req_data.package
@@ -840,6 +843,9 @@ class PluginInstallFromGithubApi(Resource):
     @with_current_tenant_id
     @model_validate(ParserGithubInstall)
     def post(self, req_data: ParserGithubInstall, tenant_id: str):
+
+        if dify_config.OFFLINE_MODE:
+            return {"code": "offline_mode", "message": "GitHub plugin installation is disabled in offline mode."}, 403
 
         try:
             response = PluginService.install_from_github(
